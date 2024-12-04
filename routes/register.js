@@ -22,10 +22,11 @@ async function isUniqueUsername(email) {
 
 // Handle user registration
 export async function registerUser(c) {
-    const username = c.get('username');
-    const password = c.get('password');
-    const birthdate = c.get('birthdate');
-    const role = c.get('role');
+    const body = await c.req.parseBody();
+    const username = body.username;
+    const password = body.password;
+    const birthdate = body.birthdate;
+    const role = body.role;
     try {
         // Validate the input data using Zod
         registerSchema.parse({ username, password, birthdate, role });
