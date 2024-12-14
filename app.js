@@ -1,10 +1,14 @@
-import { Hono } from "https://deno.land/x/hono/mod.ts";
-import { registerUser } from "./routes/register.js"; // Import register logic
+import { Hono } from "https://deno.land/x/hono/mod.ts"; // Import Hono framework
+import { loginUser } from "./routes/login.js"; // Import login logic
+import { registerUser } from "./routes/register.js"; // Import registration logic
+import { serveStatic } from "https://deno.land/x/hono/middleware.ts"; // Import static file middleware
+import * as bcrypt from "https://deno.land/x/bcrypt/mod.ts"; // Import bcrypt for password hashing
 
+// Create the Hono app
 const app = new Hono();
 
 // Middleware to add security headers
-app.use('*', (c, next) => {
+app.use('*', async (c, next) => {
   // Prevent MIME sniffing
   c.header('X-Content-Type-Options', 'nosniff');
 
@@ -25,20 +29,54 @@ app.use('*', (c, next) => {
   // Prevent ClickJacking
   c.header('X-Frame-Options', 'DENY');
 
-  return next();
+  await next();
 });
 
-// Serve the registration form
+// Serve static files from the /static directory
+app.use('/static/*', serveStatic({ root:'.'}));
+
+// Serve registration page
 app.get('/register', async (c) => {
-  const registerForm = await Deno.readTextFile('./views/register.html');
-  return c.html(registerForm);
+  try {
+    const html = await Deno.readTextFile('./views/register.html');
+    return c.html(html); // Serve register.html
+  } catch (err) {
+    console.error("Error reading register.html:", err);
+    return c.text('Error loading registration page', 500);
+  }
 });
 
-// Route for user registration (POST request)
-app.post('/register', registerUser);
+// Handle user registration
+app.post('/register', async (c) => {
+  try {
+    return await registerUser(c); // Call the imported registerUser function
+  } catch (err) {
+    console.error("Error in registration:", err);
+    return c.text('Registration error', 500);
+  }
+});
 
-// Start the app
-Deno.serve(app.fetch);
+// Serve login page
+app.get('/login', async (c) => {
+  try {
+    const html = await Deno.readTextFile('./views/login.html');
+    return c.html(html); // Serve login.html
+  } catch (err) {
+    console.error("Error reading login.html:", err);
+    return c.text('Error loading login page', 500);
+  }
+});
 
-// To run the app, use the following command:
-// deno run --allow-net --allow-env --allow-read --watch app.js
+// Handle user login
+app.post('/login', async (c) => {
+  try {
+    return await loginUser(c); // Call the imported loginUser function
+  } catch (err) {
+    console.error("Error in login:", err);
+    return c.text('Login error', 500);
+  }
+});
+
+// Start the server
+Deno.serve({ port: 3000 }, app.fetch);
+console.log('Server running on http://localhost:3000');
